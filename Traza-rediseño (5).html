@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traza — Rentabilidad de rutas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #17191C;
+    --surface: #1F2226;
+    --surface-raised: #292C31;
+    --line: #34373D;
+    --text: #F3F3F1;
+    --text-dim: #9A9D9F;
+    --accent: #FFD21F;
+    --accent-dim: #7A6A1A;
+    --accent-ink: #17191C;
+    --route: #4FB8B0;
+    --good: #5CB37E;
+    --good-bg: #1B2620;
+    --bad: #D2654E;
+    --bad-bg: #2C1F1C;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter', sans-serif;padding:0 0 80px;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;}
+
+  /* ---------- Header ---------- */
+  header{padding:36px 0 22px;border-bottom:1px solid var(--line);margin-bottom:28px;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;}
+  .brand-block{display:flex;align-items:center;gap:18px;}
+  .brand-mark{flex-shrink:0;height:36px;width:auto;display:block;}
+  .tag{font-size:14px;color:var(--text-dim);margin:0;max-width:380px;}
+  .header-meta{font-family:'IBM Plex Mono', monospace;font-size:11.5px;color:var(--text-dim);text-align:right;line-height:1.6;}
+  .header-meta b{color:var(--route);}
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:flex;gap:0;margin-bottom:24px;border-bottom:1px solid var(--line);}
+  .tab-btn{
+    background:none;border:none;color:var(--text-dim);font-family:'Space Grotesk', sans-serif;
+    font-weight:600;font-size:16.5px;padding:10px 4px;margin-right:28px;cursor:pointer;
+    border-bottom:2px solid transparent;letter-spacing:0.01em;
+  }
+  .tab-btn .count{font-family:'IBM Plex Mono', monospace;font-size:11px;color:var(--text-dim);margin-left:6px;}
+  .tab-btn.active{color:var(--text);border-bottom-color:var(--accent);}
+  .tab-btn.active .count{color:var(--accent);}
+  .tab-btn:hover{color:var(--text);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-left:2px solid var(--line);border-radius:6px;padding:22px 24px;margin-bottom:18px;}
+  .panel.accent-left{border-left-color:var(--accent);}
+  .panel.hero{border-left-color:var(--route);box-shadow:0 0 0 1px rgba(79,166,160,0.06);}
+  .panel h2{
+    font-family:'Space Grotesk', sans-serif;font-weight:600;font-size:15px;letter-spacing:0.03em;
+    color:var(--text);margin:0 0 16px;padding-bottom:10px;border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;
+  }
+  .panel h2 .sub{font-size:12px;letter-spacing:0;color:var(--text-dim);font-weight:400;}
+
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:12.5px;color:var(--text-dim);}
+  .field-hint{font-size:11.5px;color:var(--text-dim);margin-top:2px;}
+  input, select{
+    background:var(--bg);border:1px solid var(--line);color:var(--text);
+    font-family:'IBM Plex Mono', monospace;font-size:13.5px;padding:9px 10px;border-radius:5px;outline:none;width:100%;
+    transition:border-color 0.15s;
+  }
+  input:hover, select:hover{border-color:#42454C;}
+  input:focus, select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(232,163,61,0.12);}
+  select{font-family:'Inter', sans-serif;}
+
+  button{
+    background:var(--surface-raised);border:1px solid var(--line);color:var(--text);
+    font-family:'Inter', sans-serif;font-size:13px;font-weight:500;padding:10px 16px;border-radius:5px;cursor:pointer;white-space:nowrap;
+    transition:border-color 0.15s, opacity 0.15s, background 0.15s;
+  }
+  button:hover{border-color:var(--accent);}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;}
+  button.primary:hover{opacity:0.92;border-color:var(--accent);}
+  button.ghost{background:transparent;}
+  button.danger{background:transparent;color:var(--bad);border-color:var(--line);}
+  button.danger:hover{border-color:var(--bad);background:rgba(196,96,75,0.08);}
+  button:disabled{opacity:0.5;cursor:default;}
+  button:disabled:hover{border-color:var(--line);}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .btn-block{width:100%;}
+  .btn-lg{padding:13px 20px;font-size:14.5px;}
+
+  .veh-form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+  @media (max-width:820px){ .veh-form-grid{grid-template-columns:repeat(2,1fr);} }
+
+  /* ---------- Búsqueda por patente (clasific.ar, vía backend local) ---------- */
+  .patente-lookup{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin-bottom:18px;}
+  .patente-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+  .patente-field{max-width:200px;}
+  .patente-field input{text-transform:uppercase;}
+  .patente-status{font-size:12.5px;color:var(--text-dim);margin:8px 0 0;min-height:16px;}
+  .patente-result{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:12px 14px;font-size:13px;}
+  .patente-result .pr-row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;}
+  .patente-result .pr-row span:first-child{color:var(--text-dim);}
+  .patente-result .pr-row span:last-child{font-family:'IBM Plex Mono', monospace;text-align:right;}
+  .patente-result .pr-title{font-family:'Space Grotesk', sans-serif;font-weight:600;font-size:15px;margin:0 0 8px;}
+
+  .veh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:16px;}
+  .veh-card{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:14px 16px;position:relative;}
+  .veh-card .cat-tag{
+    display:inline-block;font-family:'IBM Plex Mono', monospace;font-size:10px;letter-spacing:0.03em;
+    color:var(--route);background:rgba(79,166,160,0.12);border:1px solid rgba(79,166,160,0.35);
+    border-radius:3px;padding:2px 6px;margin-bottom:8px;
+  }
+  .veh-card h3{font-family:'Space Grotesk', sans-serif;font-weight:600;font-size:16px;margin:0 0 8px;padding-right:20px;}
+  .veh-card .row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-dim);margin-bottom:4px;}
+  .veh-card .row span:last-child{color:var(--text);font-family:'IBM Plex Mono', monospace;}
+  .veh-card .del-btn{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--bad);font-size:16px;padding:0;cursor:pointer;}
+  .rate-line{border-top:1px solid var(--line);margin-top:8px;padding-top:8px;}
+  .empty-msg{font-size:13px;color:var(--text-dim);padding:14px 2px;}
+
+  .route-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:720px){ .route-grid{grid-template-columns:1fr;} }
+  .route-status{font-size:12.5px;color:var(--text-dim);margin-top:10px;min-height:16px;}
+
+  .checkbox-row{display:flex;align-items:center;gap:8px;margin:6px 0 0;}
+  .checkbox-row input{width:auto;}
+  .checkbox-row label{font-size:13px;color:var(--text);}
+  .toll-helper{display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--line);}
+  .toll-helper.show{display:grid;}
+  .toll-helper .field label{font-size:11.5px;}
+
+  /* ---------- Destinos dinámicos ---------- */
+  .destinos-section{margin-top:20px;}
+  .destinos-section h3{
+    font-family:'Space Grotesk', sans-serif;font-weight:600;font-size:13px;letter-spacing:0.05em;
+    color:var(--text-dim);text-transform:uppercase;margin:0 0 10px;
+  }
+  .destino-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .destino-row .destino-input{flex:1;}
+  .destino-row .destino-del{flex-shrink:0;padding:9px 12px;font-size:15px;line-height:1;}
+
+  /* ---------- Ruta optimizada (visual) ---------- */
+  .route-visual-wrap{margin-top:24px;display:none;}
+  .route-visual{
+    display:flex;flex-direction:column;align-items:flex-start;background:var(--bg);
+    border:1px solid var(--line);border-radius:6px;padding:20px 22px;
+  }
+  .route-point{display:flex;flex-direction:column;gap:2px;}
+  .route-point .rp-label{
+    font-family:'IBM Plex Mono', monospace;font-size:10.5px;letter-spacing:0.06em;color:var(--route);text-transform:uppercase;
+  }
+  .route-point .rp-name{font-family:'Space Grotesk', sans-serif;font-weight:600;font-size:17px;color:var(--text);}
+  .route-arrow{color:var(--text-dim);font-size:16px;padding:5px 0 5px 3px;}
+
+  /* ---------- Comparación de orden ---------- */
+  .compare-wrap{margin-top:22px;display:none;}
+  .compare-label{font-size:12px;color:var(--text-dim);margin:0 0 10px;}
+  .compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;}
+  .compare-card{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:13px 15px;}
+  .compare-card .cap{font-family:'IBM Plex Mono', monospace;font-size:10.5px;letter-spacing:0.05em;color:var(--text-dim);margin:0 0 5px;}
+  .compare-card .big{font-family:'Space Grotesk', sans-serif;font-weight:700;font-size:22px;margin:0;}
+  .compare-card .big.accent{color:var(--accent);}
+  .compare-card .big.good{color:var(--good);}
+  .eficiente-msg{display:none;font-size:13px;color:var(--good);background:var(--good-bg);border-radius:5px;padding:12px 16px;}
+
+  /* ---------- Impacto económico ---------- */
+  .impact-card{
+    margin-top:22px;background:var(--bg);border:1px solid var(--line);border-left:2px solid var(--accent);
+    border-radius:6px;padding:18px 20px;display:none;
+  }
+  .impact-card h3{font-family:'Space Grotesk', sans-serif;font-weight:600;font-size:14.5px;letter-spacing:0.02em;margin:0 0 4px;color:var(--text);}
+  .impact-card .impact-sub{font-size:12px;color:var(--text-dim);margin:0 0 14px;}
+  .impact-placeholder{font-size:13px;color:var(--text-dim);}
+  .impact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;}
+  .impact-item .lbl{font-size:11.5px;color:var(--text-dim);margin:0 0 4px;}
+  .impact-item .val{font-family:'IBM Plex Mono', monospace;font-size:15.5px;font-weight:600;color:var(--text);}
+  .impact-item.ahorro .val{color:var(--good);font-size:18px;}
+
+  /* Ribbon de composición de costos */
+  .cost-ribbon{margin-top:20px;}
+  .ribbon-bar{display:flex;width:100%;height:30px;border-radius:5px;overflow:hidden;border:1px solid var(--line);}
+  .ribbon-seg{height:100%;transition:width 0.4s ease;}
+  .ribbon-legend{display:flex;flex-wrap:wrap;gap:14px 22px;margin-top:12px;}
+  .ribbon-item{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+  .ribbon-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+  .ribbon-item .val{font-family:'IBM Plex Mono', monospace;color:var(--text);margin-left:2px;}
+  .ribbon-item .lbl{color:var(--text-dim);}
+
+  .result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:18px;}
+  .metric{background:var(--bg);border-radius:5px;padding:11px 13px;}
+  .metric-label{font-size:11.5px;color:var(--text-dim);margin:0 0 4px;}
+  .metric-value{font-family:'IBM Plex Mono', monospace;font-size:17px;font-weight:600;margin:0;}
+
+  .rentab-box{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-radius:6px;margin-top:18px;flex-wrap:wrap;
+  }
+  .rentab-left{display:flex;align-items:center;gap:12px;}
+  .rentab-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+  .rentab-text{font-family:'Space Grotesk', sans-serif;font-weight:700;font-size:20px;}
+  .rentab-sub{font-size:12.5px;color:var(--text-dim);margin-top:2px;}
+
+  /* ---------- Presupuestos (historial) ---------- */
+  .quote-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .quote-table th{
+    text-align:left;font-family:'Space Grotesk', sans-serif;font-weight:600;font-size:12px;letter-spacing:0.02em;
+    color:var(--text-dim);border-bottom:1px solid var(--line);padding:8px 10px;
+  }
+  .quote-table td{padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .quote-table td.mono{font-family:'IBM Plex Mono', monospace;}
+  .quote-table tr:last-child td{border-bottom:none;}
+  .quote-route{display:flex;align-items:center;gap:6px;font-size:12.5px;flex-wrap:wrap;}
+  .quote-route .arrow{color:var(--text-dim);}
+  .quote-route .quote-paradas{color:var(--text-dim);font-size:11px;}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:12px;font-family:'Inter', sans-serif;font-weight:600;}
+  .pill.good{background:var(--good-bg);color:var(--good);}
+  .pill.bad{background:var(--bad-bg);color:var(--bad);}
+  .quote-del{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;padding:2px 6px;}
+  .quote-del:hover{color:var(--bad);}
+
+  footer{margin-top:32px;font-size:12px;color:var(--text-dim);border-top:1px solid var(--line);padding-top:16px;}
+
+  /* ---------- Lenguaje visual "paso a paso" ---------- */
+  .step-nav{display:flex;gap:0;margin-bottom:22px;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  .step-nav a{
+    flex:1;min-width:110px;padding:10px 14px;text-decoration:none;color:var(--text-dim);
+    border-right:1px solid var(--line);font-family:'Inter', sans-serif;font-size:12.5px;
+    display:flex;flex-direction:column;gap:2px;transition:background 0.15s;
+  }
+  .step-nav a:last-child{border-right:none;}
+  .step-nav a:hover{background:var(--surface-raised);color:var(--text);}
+  .step-nav a .n{font-family:'IBM Plex Mono', monospace;font-size:10.5px;color:var(--route);letter-spacing:0.03em;}
+  .step-nav a.done .n::after{content:" ✓";color:var(--good);}
+
+  .step-section{margin-bottom:22px;}
+  .step-eyebrow{font-family:'IBM Plex Mono', monospace;font-size:11px;letter-spacing:0.08em;color:var(--route);margin:0 0 6px;}
+  .step-title{font-family:'Space Grotesk', sans-serif;font-weight:700;font-size:25px;letter-spacing:0.01em;margin:0 0 6px;text-transform:uppercase;}
+  .step-desc{font-size:13.5px;color:var(--text-dim);margin:0 0 18px;max-width:560px;}
+
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:16px;}
+  .stat-card{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:14px 16px;}
+  .stat-card .big{font-family:'Space Grotesk', sans-serif;font-weight:700;font-size:30px;line-height:1;color:var(--text);}
+  .stat-card .big.accent{color:var(--accent);}
+  .stat-card .big.good{color:var(--good);}
+  .stat-card .cap{font-family:'IBM Plex Mono', monospace;font-size:10.5px;letter-spacing:0.06em;color:var(--text-dim);margin-top:6px;}
+
+  .slider-row{display:flex;align-items:center;gap:14px;}
+  .slider-row input[type=range]{
+    -webkit-appearance:none;flex:1;height:4px;border-radius:2px;background:var(--line);outline:none;
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;
+  }
+  .slider-row input[type=range]::-moz-range-thumb{
+    width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;
+  }
+  .slider-readout{font-family:'Space Grotesk', sans-serif;font-weight:700;font-size:22px;color:var(--accent);min-width:56px;text-align:right;}
+
+  .price-comp{margin-top:18px;}
+  .price-comp .label-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:6px;}
+  .price-comp-bar{display:flex;width:100%;height:22px;border-radius:5px;overflow:hidden;border:1px solid var(--line);}
+  .price-comp-bar .seg-costo{background:#54585F;height:100%;}
+  .price-comp-bar .seg-margen{height:100%;}
+
+  .semaphore{display:flex;gap:6px;align-items:center;}
+  .semaphore .sdot{width:10px;height:10px;border-radius:50%;background:#40434A;}
+  .semaphore .sdot.on-bad{background:var(--bad);}
+  .semaphore .sdot.on-warn{background:var(--accent);}
+  .semaphore .sdot.on-good{background:var(--good);}
+
+  @media (max-width:600px){
+    .step-title{font-size:21px;}
+    .panel{padding:18px 16px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-row">
+      <div class="brand-block">
+        <img class="brand-mark" src="data:image/png;base64,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" alt="Traza">
+      </div>
+      <div class="header-meta" id="headerMeta">0 vehículos · 0 presupuestos guardados</div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="vehiculos">Flota<span class="count" id="countVeh"></span></button>
+    <button class="tab-btn" data-tab="ruta">Ruta y cotización</button>
+    <button class="tab-btn" data-tab="presupuestos">Presupuestos<span class="count" id="countPre"></span></button>
+  </div>
+
+  <!-- ===================== TAB: FLOTA ===================== -->
+  <div class="tab-panel active" id="tab-vehiculos">
+    <div class="panel accent-left">
+      <h2>Nuevo vehículo</h2>
+
+      <div class="patente-lookup" id="patenteLookup">
+        <div class="patente-row">
+          <div class="field patente-field">
+            <label>Buscar por patente (opcional)</label>
+            <input type="text" id="pPatente" placeholder="AB123CD" maxlength="7" autocomplete="off">
+          </div>
+          <button type="button" class="ghost" id="btnBuscarPatente">Buscar patente</button>
+        </div>
+        <p class="patente-status" id="patenteStatus"></p>
+        <div class="patente-result" id="patenteResult" style="display:none;"></div>
+      </div>
+
+      <div class="veh-form-grid">
+        <div class="field"><label>Nombre / código</label><input type="text" id="vNombre" placeholder="Iveco Daily AB123CD"></div>
+        <div class="field">
+          <label>Categoría</label>
+          <select id="vCategoria">
+            <option value="Utilitario" data-consumo="12">Utilitario (&lt; 3,5 t)</option>
+            <option value="Liviano" data-consumo="18">Liviano (3,5–8 t)</option>
+            <option value="Mediano" data-consumo="22" selected>Mediano (8–15 t)</option>
+            <option value="Semirremolque" data-consumo="33">Semirremolque (hasta 45 t)</option>
+            <option value="Bitrén" data-consumo="40">Bitrén</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Combustible</label>
+          <select id="vCombustible">
+            <option>Diesel</option><option>Nafta</option><option>GNC</option><option>Eléctrico</option><option>Otro</option>
+          </select>
+        </div>
+        <div class="field"><label>Consumo promedio (L/100km)</label><input type="number" id="vConsumo" value="22" min="0" step="1"></div>
+        <div class="field"><label>Valor actual del vehículo ($)</label><input type="number" id="vValorActual" value="25000000" min="0" step="100000"></div>
+        <div class="field"><label>Valor residual estimado ($)</label><input type="number" id="vValorResidual" value="8000000" min="0" step="100000"></div>
+        <div class="field"><label>Km al momento de adquisición</label><input type="number" id="vKmInicial" value="0" min="0" step="1000"></div>
+        <div class="field"><label>Km máximo para reemplazo</label><input type="number" id="vKmMax" value="300000" min="1" step="10000"></div>
+        <div class="field"><label>Gastos de mantenimiento en el período t ($)</label><input type="number" id="vMantenimientoT" value="800000" min="0" step="10000"></div>
+        <div class="field"><label>Km recorridos en el período t</label><input type="number" id="vKmPeriodoT" value="20000" min="1" step="1000"></div>
+      </div>
+      <button class="primary" id="btnAddVeh">Agregar vehículo</button>
+    </div>
+
+    <div class="panel">
+      <h2>Flota cargada <span class="sub" id="vehSummary"></span></h2>
+      <div class="veh-grid" id="vehGrid"></div>
+      <p class="empty-msg" id="vehEmpty" style="display:none">Todavía no cargaste ningún vehículo. Completá el formulario de arriba para empezar.</p>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: RUTA Y COTIZACIÓN ===================== -->
+  <div class="tab-panel" id="tab-ruta">
+
+    <div class="step-nav" id="stepNav">
+      <a href="#step1"><span class="n">01</span>Ruta</a>
+      <a href="#step2"><span class="n">02</span>Vehículo</a>
+      <a href="#step3"><span class="n">03</span>Costos</a>
+      <a href="#step4"><span class="n">04</span>Margen</a>
+      <a href="#step5"><span class="n">05</span>Resultado</a>
+    </div>
+
+    <div class="panel accent-left step-section hero" id="step1">
+      <p class="step-eyebrow">Paso 01</p>
+      <h2 class="step-title" style="border:none;padding:0;margin-bottom:4px;">Planificá tu recorrido</h2>
+      <p class="step-desc">Cargá el punto de partida y todas las paradas. Traza geocodifica cada dirección (OpenStreetMap/Nominatim) y calcula el orden que minimiza los kilómetros totales (OSRM).</p>
+
+      <div class="field">
+        <label>Punto de inicio del camión</label>
+        <input type="text" id="puntoInicio" placeholder="Av. Corrientes 1000, CABA">
+        <p class="field-hint">Indicá desde dónde comienza el recorrido.</p>
+      </div>
+
+      <div class="destinos-section">
+        <h3>Destinos / paradas</h3>
+        <div id="destinosList"></div>
+        <button type="button" class="ghost" id="btnAddDestino">+ Agregar destino</button>
+      </div>
+
+      <button class="primary btn-block btn-lg" id="btnOptimizarRuta" type="button" style="margin-top:20px;">Optimizar ruta</button>
+      <p class="route-status" id="routeStatus"></p>
+
+      <!-- Ruta optimizada -->
+      <div class="route-visual-wrap" id="routeVisualWrap">
+        <h3 style="font-family:'Space Grotesk', sans-serif;font-weight:600;font-size:13px;letter-spacing:0.05em;color:var(--text-dim);text-transform:uppercase;margin:0 0 10px;">Ruta optimizada</h3>
+        <div class="route-visual" id="routeVisual"></div>
+        <div class="stat-row">
+          <div class="stat-card"><p class="big accent" id="kpiDistancia">0</p><p class="cap">DISTANCIA TOTAL (KM)</p></div>
+          <div class="stat-card"><p class="big accent" id="kpiDuracion">0</p><p class="cap">DURACIÓN (H)</p></div>
+          <div class="stat-card"><p class="big" id="kpiParadas">0</p><p class="cap">PARADAS</p></div>
+          <div class="stat-card"><p class="big good" id="kpiKmEvitados">0</p><p class="cap">KM EVITADOS</p></div>
+        </div>
+      </div>
+
+      <!-- Comparación orden ingresado vs. optimizado -->
+      <div class="compare-wrap" id="compareWrap">
+        <p class="compare-label">Comparación contra el orden en que ingresaste los destinos</p>
+        <div class="compare-grid" id="compareGrid">
+          <div class="compare-card"><p class="cap">ORDEN INGRESADO</p><p class="big" id="cmpIngresado">0 km</p></div>
+          <div class="compare-card"><p class="cap">RUTA OPTIMIZADA</p><p class="big accent" id="cmpOptimizado">0 km</p></div>
+          <div class="compare-card"><p class="cap">KM EVITADOS</p><p class="big good" id="cmpKmEvitados">0 km</p></div>
+          <div class="compare-card"><p class="cap">REDUCCIÓN DE DISTANCIA</p><p class="big good" id="cmpReduccion">0%</p></div>
+        </div>
+        <p class="eficiente-msg" id="cmpEficienteMsg">El orden ingresado ya es eficiente.</p>
+      </div>
+
+      <!-- Impacto económico de la optimización -->
+      <div class="impact-card" id="impactCard">
+        <h3>Impacto de la optimización</h3>
+        <p class="impact-sub">Estimado con combustible, mano de obra, mantenimiento y depreciación del vehículo elegido en el paso 02. Los peajes cargados manualmente se mantienen sin cambios entre ambos escenarios.</p>
+        <p class="impact-placeholder" id="impactPlaceholder">Seleccioná un vehículo en el paso 02 para ver el impacto económico de la optimización.</p>
+        <div class="impact-grid" id="impactBody" style="display:none;">
+          <div class="impact-item"><p class="lbl">Kilómetros evitados</p><p class="val" id="impKm">-</p></div>
+          <div class="impact-item"><p class="lbl">Horas de conducción evitadas</p><p class="val" id="impHoras">-</p></div>
+          <div class="impact-item"><p class="lbl">Costo orden ingresado</p><p class="val" id="impCostoIngresado">-</p></div>
+          <div class="impact-item"><p class="lbl">Costo ruta optimizada</p><p class="val" id="impCostoOptimizado">-</p></div>
+          <div class="impact-item ahorro"><p class="lbl">Ahorro operativo estimado</p><p class="val" id="impAhorro">-</p></div>
+        </div>
+      </div>
+
+      <!-- Campos internos que alimentan el cálculo económico (se completan al optimizar) -->
+      <input type="hidden" id="distancia" value="0">
+      <input type="hidden" id="duracion" value="0">
+    </div>
+
+    <div class="panel step-section" id="step2">
+      <p class="step-eyebrow">Paso 02</p>
+      <h2 class="step-title" style="border:none;padding:0;margin-bottom:4px;">Elegí el vehículo</h2>
+      <p class="step-desc">De tu flota, con sus costos de combustible y desgaste ya cargados.</p>
+      <div class="route-grid">
+        <div class="field"><label>Vehículo</label><select id="rVehiculo"></select></div>
+      </div>
+      <div class="stat-row" id="vehStatRow" style="display:none;">
+        <div class="stat-card"><p class="big" id="vehStatCat">—</p><p class="cap">CATEGORÍA</p></div>
+        <div class="stat-card"><p class="big" id="vehStatConsumo">—</p><p class="cap">CONSUMO L/100KM</p></div>
+        <div class="stat-card"><p class="big" id="vehStatDepre">—</p><p class="cap">DEPRECIACIÓN/KM</p></div>
+        <div class="stat-card"><p class="big" id="vehStatMant">—</p><p class="cap">MANTENIMIENTO/KM</p></div>
+      </div>
+    </div>
+
+    <div class="panel step-section" id="step3">
+      <p class="step-eyebrow">Paso 03</p>
+      <h2 class="step-title" style="border:none;padding:0;margin-bottom:4px;">Costos del viaje</h2>
+      <p class="step-desc">Combustible, mano de obra y peajes. El sistema arma el costo total con esto más la depreciación y mantenimiento del vehículo.</p>
+      <div class="route-grid">
+        <div class="field"><label>Precio combustible ($/L)</label><input type="number" id="rPrecioComb" value="1350" min="0" step="10"></div>
+        <div class="field"><label>Costo laboral chofer ($/hora)</label><input type="number" id="rCostoChofer" value="4500" min="0" step="100"></div>
+        <div class="field">
+          <div class="checkbox-row"><input type="checkbox" id="rTieneAcomp"><label for="rTieneAcomp">Lleva acompañante</label></div>
+        </div>
+        <div class="field" id="rAcompField" style="display:none">
+          <label>Costo laboral acompañante ($/hora)</label><input type="number" id="rCostoAcomp" value="3500" min="0" step="100">
+        </div>
+        <div class="field">
+          <div class="checkbox-row"><input type="checkbox" id="rUsarHelper"><label for="rUsarHelper">Calcular peajes por cantidad de tramos</label></div>
+        </div>
+      </div>
+      <div class="toll-helper" id="tollHelper">
+        <div class="field"><label>Cantidad de peajes en el trayecto</label><input type="number" id="rCantPeajes" value="0" min="0" step="1"></div>
+        <div class="field"><label>Valor promedio por peaje ($)</label><input type="number" id="rValorPeaje" value="0" min="0" step="50"></div>
+      </div>
+      <div class="route-grid" style="margin-top:12px;">
+        <div class="field"><label>Peajes ($)</label><input type="number" id="rPeajes" value="0" min="0" step="500"></div>
+        <div class="field"><label>Facturación del viaje ($)</label><input type="number" id="rFacturado" value="120000" min="0" step="1000"></div>
+      </div>
+    </div>
+
+    <div class="panel step-section" id="step4">
+      <p class="step-eyebrow">Paso 04</p>
+      <h2 class="step-title" style="border:none;padding:0;margin-bottom:4px;">Definí tu margen</h2>
+      <p class="step-desc">El margen objetivo sobre la facturación con el que evaluamos si el viaje conviene.</p>
+      <div class="slider-row">
+        <input type="range" id="rMargenSlider" min="0" max="50" step="1" value="15">
+        <span class="slider-readout" id="margenReadout">15%</span>
+      </div>
+      <input type="number" id="rMargenObjetivo" value="15" min="0" step="1" style="display:none;">
+    </div>
+
+    <div class="panel step-section" id="step5">
+      <p class="step-eyebrow">Paso 05</p>
+      <h2 class="step-title" style="border:none;padding:0;margin-bottom:4px;">Resultado</h2>
+      <p class="step-desc">Composición del costo, precio final y si el viaje es rentable con tu margen objetivo.</p>
+
+      <div class="rentab-box" id="rentabBox">
+        <div class="rentab-left">
+          <div class="semaphore" id="semaphore">
+            <span class="sdot" id="sdot1"></span><span class="sdot" id="sdot2"></span><span class="sdot" id="sdot3"></span>
+          </div>
+          <div>
+            <p class="rentab-text" id="rentabText">-</p>
+            <p class="rentab-sub" id="rentabSub"></p>
+          </div>
+        </div>
+        <button class="primary" id="btnGuardarPresupuesto">Guardar presupuesto</button>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card"><p class="big" id="outTotal">-</p><p class="cap">COSTO TOTAL</p></div>
+        <div class="stat-card"><p class="big" id="outCostoKm">-</p><p class="cap">COSTO POR KM</p></div>
+        <div class="stat-card"><p class="big" id="outMargenPesos">-</p><p class="cap">MARGEN $</p></div>
+        <div class="stat-card"><p class="big accent" id="outMargenPct">-</p><p class="cap">MARGEN %</p></div>
+      </div>
+
+      <div class="price-comp">
+        <div class="label-row"><span>Composición del precio facturado</span></div>
+        <div class="price-comp-bar" id="priceCompBar">
+          <div class="seg-costo" id="segCosto"></div>
+          <div class="seg-margen" id="segMargen"></div>
+        </div>
+      </div>
+
+      <div class="cost-ribbon">
+        <div class="label-row" style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:6px;"><span>Desglose del costo</span></div>
+        <div class="ribbon-bar" id="ribbonBar"></div>
+        <div class="ribbon-legend" id="ribbonLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: PRESUPUESTOS ===================== -->
+  <div class="tab-panel" id="tab-presupuestos">
+    <div class="panel accent-left">
+      <h2>Presupuestos generados <span class="sub" id="preSummary"></span></h2>
+      <div class="btn-row" style="margin-bottom:16px">
+        <button class="ghost" id="btnExportPre">Exportar CSV</button>
+        <button class="ghost" id="btnClearPre">Vaciar historial</button>
+      </div>
+      <table class="quote-table" id="preTable" style="display:none">
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Ruta</th><th>Vehículo</th><th>Distancia</th><th>Costo total</th><th>Margen</th><th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="preTableBody"></tbody>
+      </table>
+      <p class="empty-msg" id="preEmpty">Todavía no guardaste ningún presupuesto. Calculá una ruta en la pestaña "Ruta y cotización" y tocá "Guardar presupuesto".</p>
+    </div>
+  </div>
+
+  <footer>
+    Distancia (km) y duración (horas) se calculan con servicios públicos y gratuitos (OpenStreetMap / OSRM), sin necesidad de una API key. Combustible, peajes y valor de vehículos se cargan a mano según lo que cotejes con tus propias fuentes.
+  </footer>
+
+</div>
+
+<script>
+let vehiculos = JSON.parse(localStorage.getItem('traza_vehiculos') || 'null') || [];
+let presupuestos = JSON.parse(localStorage.getItem('traza_presupuestos') || 'null') || [];
+
+// Estado de la ruta multi-destino (se completa al optimizar). Reemplaza a la variable
+// "ultimaRuta" de la versión anterior, que sólo soportaba un origen y un destino.
+let rutaState = {
+  calculada: false,
+  puntoInicio: null,          // {texto, lat, lon}
+  paradas: [],                 // [{texto, lat, lon}, ...] en el orden OPTIMIZADO
+  distanciaOptimizada: 0,      // km
+  duracionOptimizada: 0,       // horas
+  distanciaOrdenIngresado: 0,  // km, respetando el orden en que se tipearon los destinos
+  duracionOrdenIngresado: 0    // horas
+};
+
+// Lista de destinos dinámicos: cada uno es {id, value}
+let destinoCounter = 0;
+let destinos = [];
+let optimizandoEnCurso = false; // evita disparar varios pedidos de optimización a la vez
+
+function saveVeh(){ localStorage.setItem('traza_vehiculos', JSON.stringify(vehiculos)); }
+function savePre(){ localStorage.setItem('traza_presupuestos', JSON.stringify(presupuestos)); }
+function fmt(n){ return '$' + Math.round(n).toLocaleString('es-AR'); }
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+function markStepDone(id, done){
+  const link = document.querySelector(`.step-nav a[href="#${id}"]`);
+  if (link) link.classList.toggle('done', !!done);
+}
+function updateHeaderMeta(){
+  document.getElementById('headerMeta').textContent = vehiculos.length + ' vehículo' + (vehiculos.length===1?'':'s') + ' · ' + presupuestos.length + ' presupuesto' + (presupuestos.length===1?'':'s') + ' guardado' + (presupuestos.length===1?'':'s');
+  document.getElementById('countVeh').textContent = vehiculos.length ? vehiculos.length : '';
+  document.getElementById('countPre').textContent = presupuestos.length ? presupuestos.length : '';
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- Categoría → preset de consumo ----------
+document.getElementById('vCategoria').addEventListener('change', (e) => {
+  const opt = e.target.selectedOptions[0];
+  const consumo = opt.getAttribute('data-consumo');
+  if (consumo) document.getElementById('vConsumo').value = consumo;
+});
+
+// ---------- Vehículos ----------
+function depreciacionPorKm(v){
+  const denom = v.kmMax - v.kmInicial;
+  return denom > 0 ? (v.valorActual - v.valorResidual) / denom : 0;
+}
+function mantenimientoPorKm(v){
+  return v.kmPeriodoT > 0 ? v.mantenimientoT / v.kmPeriodoT : 0;
+}
+
+function renderVehiculos(){
+  const grid = document.getElementById('vehGrid');
+  const empty = document.getElementById('vehEmpty');
+  grid.innerHTML = '';
+  empty.style.display = vehiculos.length === 0 ? 'block' : 'none';
+  document.getElementById('vehSummary').textContent = vehiculos.length ? (vehiculos.length + ' unidad' + (vehiculos.length===1?'':'es')) : '';
+  vehiculos.forEach((v, i) => {
+    const card = document.createElement('div');
+    card.className = 'veh-card';
+    card.innerHTML = `
+      <button class="del-btn" data-idx="${i}" title="Eliminar">&times;</button>
+      <span class="cat-tag">${escapeHtml(v.categoria || 'Sin categoría')}</span>
+      <h3>${escapeHtml(v.nombre)}</h3>
+      <div class="row"><span>Combustible</span><span>${escapeHtml(v.combustible)}</span></div>
+      <div class="row"><span>Consumo</span><span>${v.consumo} L/100km</span></div>
+      <div class="row"><span>Valor actual</span><span>${fmt(v.valorActual)}</span></div>
+      <div class="row"><span>Valor residual</span><span>${fmt(v.valorResidual)}</span></div>
+      <div class="row"><span>Km inicial → máx</span><span>${v.kmInicial.toLocaleString('es-AR')} → ${v.kmMax.toLocaleString('es-AR')}</span></div>
+      <div class="row"><span>Mantenim. período t</span><span>${fmt(v.mantenimientoT)} / ${v.kmPeriodoT.toLocaleString('es-AR')} km</span></div>
+      <div class="rate-line">
+        <div class="row"><span>Depreciación</span><span>${fmt(depreciacionPorKm(v))}/km</span></div>
+        <div class="row"><span>Mantenimiento</span><span>${fmt(mantenimientoPorKm(v))}/km</span></div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  grid.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      vehiculos.splice(btn.dataset.idx, 1);
+      saveVeh();
+      renderVehiculos();
+      renderVehSelect();
+      updateHeaderMeta();
+    });
+  });
+  renderVehSelect();
+  updateHeaderMeta();
+}
+
+function renderVehSelect(){
+  const sel = document.getElementById('rVehiculo');
+  const current = sel.value;
+  sel.innerHTML = vehiculos.map(v => `<option value="${escapeHtml(v.nombre)}">${escapeHtml(v.nombre)}</option>`).join('');
+  if (vehiculos.some(v => v.nombre === current)) sel.value = current;
+  updateVehStatDisplay();
+  calcularCostos();
+  calcularImpactoOptimizacion();
+}
+
+document.getElementById('btnAddVeh').addEventListener('click', () => {
+  const nombre = document.getElementById('vNombre').value.trim();
+  const categoria = document.getElementById('vCategoria').value;
+  const combustible = document.getElementById('vCombustible').value;
+  const consumo = parseFloat(document.getElementById('vConsumo').value);
+  const valorActual = parseFloat(document.getElementById('vValorActual').value);
+  const valorResidual = parseFloat(document.getElementById('vValorResidual').value);
+  const kmInicial = parseFloat(document.getElementById('vKmInicial').value);
+  const kmMax = parseFloat(document.getElementById('vKmMax').value);
+  const mantenimientoT = parseFloat(document.getElementById('vMantenimientoT').value);
+  const kmPeriodoT = parseFloat(document.getElementById('vKmPeriodoT').value);
+
+  if (!nombre || [consumo,valorActual,valorResidual,kmInicial,kmMax,mantenimientoT,kmPeriodoT].some(isNaN) || kmMax <= kmInicial || kmPeriodoT <= 0){
+    alert('Revisá los campos: falta el nombre, hay algún valor inválido, o el km máximo tiene que ser mayor al km inicial.');
+    return;
+  }
+  vehiculos.push({nombre, categoria, combustible, consumo, valorActual, valorResidual, kmInicial, kmMax, mantenimientoT, kmPeriodoT});
+  document.getElementById('vNombre').value = '';
+  saveVeh();
+  renderVehiculos();
+});
+
+// ---------- Destinos dinámicos ----------
+function nuevoDestinoId(){ return 'd' + (++destinoCounter); }
+
+function renderDestinos(){
+  const list = document.getElementById('destinosList');
+  list.innerHTML = '';
+  destinos.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.className = 'destino-row';
+    row.innerHTML = `
+      <input type="text" class="destino-input no-autocalc" data-id="${d.id}" placeholder="Destino ${i+1}" value="${escapeHtml(d.value)}">
+      <button type="button" class="danger destino-del" data-id="${d.id}" title="Eliminar destino">&times;</button>
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('.destino-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const d = destinos.find(x => x.id === e.target.dataset.id);
+      if (d) d.value = e.target.value;
+    });
+  });
+  list.querySelectorAll('.destino-del').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      destinos = destinos.filter(x => x.id !== e.target.dataset.id);
+      if (destinos.length === 0){
+        // siempre queda al menos un campo de destino visible
+        destinos.push({id: nuevoDestinoId(), value: ''});
+      }
+      renderDestinos();
+    });
+  });
+}
+
+document.getElementById('btnAddDestino').addEventListener('click', () => {
+  destinos.push({id: nuevoDestinoId(), value: ''});
+  renderDestinos();
+});
+
+// Estado inicial: un solo campo "Destino 1"
+destinos.push({id: nuevoDestinoId(), value: ''});
+
+// ---------- Geocodificación y ruteo (OpenStreetMap / OSRM, sin API key) ----------
+
+// Geocodifica una dirección de texto libre a coordenadas usando Nominatim (OpenStreetMap).
+async function geocodificar(direccion){
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(direccion);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('No se pudo consultar la dirección.');
+  const data = await res.json();
+  if (!data.length) throw new Error('No se encontró la dirección.');
+  return {lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon)};
+}
+
+// Distancia/duración de un recorrido respetando EXACTAMENTE el orden de "puntos" (sin optimizar).
+// Se usa como referencia para comparar contra la ruta optimizada.
+async function calcularRutaOrdenFijo(puntos){
+  const coordsStr = puntos.map(p => `${p.lon},${p.lat}`).join(';');
+  const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=false`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('No se pudo calcular la distancia del recorrido ingresado.');
+  const data = await res.json();
+  if (!data.routes || !data.routes.length) throw new Error('No se encontró una ruta entre los puntos ingresados.');
+  return {distanciaKm: data.routes[0].distance/1000, duracionMin: data.routes[0].duration/60};
+}
+
+// Optimiza el ORDEN de visita de los puntos usando el servicio Trip de OSRM.
+// source=first fija el punto de inicio (el camión no puede arrancar en otro lado) y
+// roundtrip=false evita que se asuma un regreso al origen: la ruta abierta termina en
+// la última parada, tal como pide el enunciado.
+//
+// LIMITACIÓN CONOCIDA: OSRM Trip resuelve el problema con una heurística (aproximación por
+// vecino más cercano + mejora local tipo Or-opt) sobre el servidor público demo. Para la
+// cantidad de paradas esperable en este MVP (hasta 10-12) el resultado es muy bueno en la
+// práctica, pero NO hay garantía matemática de que sea el óptimo global, especialmente si
+// se cargan muchos destinos. Esto se comunica también en la interfaz.
+async function optimizarRutaOSRM(puntos){
+  const coordsStr = puntos.map(p => `${p.lon},${p.lat}`).join(';');
+  const url = `https://router.project-osrm.org/trip/v1/driving/${coordsStr}?source=first&roundtrip=false&annotations=distance,duration`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('No se pudo optimizar la ruta.');
+  const data = await res.json();
+  if (!data.trips || !data.trips.length) throw new Error('No se pudo calcular una ruta óptima entre los puntos ingresados.');
+  const trip = data.trips[0];
+  // data.waypoints mantiene el mismo orden que "puntos" (orden ingresado). waypoint_index
+  // indica la posición de cada punto dentro del recorrido ya optimizado.
+  const ordenOptimizado = data.waypoints
+    .map((wp, i) => ({ i, orden: wp.waypoint_index }))
+    .sort((a, b) => a.orden - b.orden)
+    .map(o => o.i);
+  return {
+    distanciaKm: trip.distance / 1000,
+    duracionMin: trip.duration / 60,
+    orden: ordenOptimizado // índices sobre el array "puntos" original
+  };
+}
+
+// ---------- Optimizar ruta (handler principal del botón) ----------
+document.getElementById('btnOptimizarRuta').addEventListener('click', optimizarRuta);
+
+async function optimizarRuta(){
+  if (optimizandoEnCurso) return; // evita disparar varios pedidos simultáneos
+
+  const status = document.getElementById('routeStatus');
+  const btn = document.getElementById('btnOptimizarRuta');
+  const inicioTxt = document.getElementById('puntoInicio').value.trim();
+  const destinosTxt = destinos.map(d => d.value.trim());
+
+  if (!inicioTxt){
+    status.textContent = 'Completá el punto de inicio del camión.';
+    status.style.color = 'var(--bad)';
+    return;
+  }
+  const idxVacio = destinosTxt.findIndex(t => t.length === 0);
+  if (destinosTxt.length === 0 || destinosTxt.every(t => t.length === 0)){
+    status.textContent = 'Agregá al menos un destino.';
+    status.style.color = 'var(--bad)';
+    return;
+  }
+  if (idxVacio !== -1){
+    status.textContent = `El destino ${idxVacio + 1} está vacío. Completalo o eliminalo antes de optimizar.`;
+    status.style.color = 'var(--bad)';
+    return;
+  }
+
+  optimizandoEnCurso = true;
+  btn.disabled = true;
+  const textoOriginalBtn = btn.textContent;
+  btn.textContent = 'Optimizando recorrido...';
+  status.style.color = 'var(--text-dim)';
+  status.textContent = 'Buscando direcciones...';
+
+  try{
+    // 1) Geocodificar el punto de inicio y todos los destinos
+    const textos = [inicioTxt, ...destinosTxt];
+    const geocoded = [];
+    for (let i = 0; i < textos.length; i++){
+      try{
+        const g = await geocodificar(textos[i]);
+        geocoded.push({texto: textos[i], lat: g.lat, lon: g.lon});
+      }catch(e){
+        const cual = i === 0 ? 'el punto de inicio' : 'el destino';
+        throw new Error(`No pudimos encontrar ${cual}: ${textos[i]}.`);
+      }
+    }
+
+    status.textContent = 'Calculando distancia del orden ingresado...';
+    // 2) Distancia/duración respetando el orden tal cual se ingresó (para comparar después)
+    const rutaIngresada = await calcularRutaOrdenFijo(geocoded);
+
+    status.textContent = 'Optimizando el orden de las paradas...';
+    // 3) Optimización del orden de visita con el servicio Trip de OSRM
+    const rutaOptima = await optimizarRutaOSRM(geocoded);
+    const puntosEnOrdenOptimo = rutaOptima.orden.map(i => geocoded[i]);
+
+    rutaState = {
+      calculada: true,
+      puntoInicio: puntosEnOrdenOptimo[0],
+      paradas: puntosEnOrdenOptimo.slice(1),
+      distanciaOptimizada: rutaOptima.distanciaKm,
+      duracionOptimizada: rutaOptima.duracionMin / 60,
+      distanciaOrdenIngresado: rutaIngresada.distanciaKm,
+      duracionOrdenIngresado: rutaIngresada.duracionMin / 60
+    };
+
+    // Actualiza los campos internos que ya usa el cálculo económico existente
+    // (combustible, laboral, mantenimiento, depreciación, costo/km, margen, etc.)
+    document.getElementById('distancia').value = rutaState.distanciaOptimizada.toFixed(1);
+    document.getElementById('duracion').value = rutaState.duracionOptimizada.toFixed(2);
+
+    renderRutaOptimizada();
+    renderComparacion();
+    calcularImpactoOptimizacion();
+    calcularCostos();
+
+    status.textContent = 'Ruta optimizada correctamente.';
+    status.style.color = 'var(--good)';
+    markStepDone('step1', true);
+  }catch(err){
+    // No se borran los datos ingresados: el usuario puede editar y volver a optimizar.
+    status.textContent = err.message;
+    status.style.color = 'var(--bad)';
+  }finally{
+    optimizandoEnCurso = false;
+    btn.disabled = false;
+    btn.textContent = textoOriginalBtn;
+  }
+}
+
+function renderRutaOptimizada(){
+  const wrap = document.getElementById('routeVisualWrap');
+  const visual = document.getElementById('routeVisual');
+  if (!rutaState.calculada){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  visual.innerHTML = '';
+
+  const addPunto = (label, texto, esPrimero) => {
+    if (!esPrimero){
+      const arrow = document.createElement('div');
+      arrow.className = 'route-arrow';
+      arrow.textContent = '↓';
+      visual.appendChild(arrow);
+    }
+    const pt = document.createElement('div');
+    pt.className = 'route-point';
+    pt.innerHTML = `<span class="rp-label">${escapeHtml(label)}</span><span class="rp-name">${escapeHtml(texto)}</span>`;
+    visual.appendChild(pt);
+  };
+
+  addPunto('Punto de inicio', rutaState.puntoInicio.texto, true);
+  rutaState.paradas.forEach((p, i) => addPunto(`Parada ${i + 1}`, p.texto, false));
+
+  document.getElementById('kpiDistancia').textContent = rutaState.distanciaOptimizada.toFixed(1);
+  document.getElementById('kpiDuracion').textContent = rutaState.duracionOptimizada.toFixed(2);
+  document.getElementById('kpiParadas').textContent = rutaState.paradas.length;
+}
+
+function renderComparacion(){
+  const wrap = document.getElementById('compareWrap');
+  if (!rutaState.calculada){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const ingresado = rutaState.distanciaOrdenIngresado;
+  const optimizado = rutaState.distanciaOptimizada;
+  let kmEvitados = ingresado - optimizado;
+  if (kmEvitados < 0) kmEvitados = 0; // nunca mostrar un ahorro negativo
+  const reduccionPct = ingresado > 0 ? (kmEvitados / ingresado * 100) : 0;
+
+  document.getElementById('cmpIngresado').textContent = ingresado.toFixed(1) + ' km';
+  document.getElementById('cmpOptimizado').textContent = optimizado.toFixed(1) + ' km';
+  document.getElementById('cmpKmEvitados').textContent = kmEvitados.toFixed(1) + ' km';
+  document.getElementById('cmpReduccion').textContent = reduccionPct.toFixed(1).replace('.', ',') + '%';
+  document.getElementById('kpiKmEvitados').textContent = kmEvitados.toFixed(1);
+
+  const grid = document.getElementById('compareGrid');
+  const msg = document.getElementById('cmpEficienteMsg');
+  if (kmEvitados < 0.5 || reduccionPct < 0.5){
+    grid.style.display = 'none';
+    msg.style.display = 'block';
+  } else {
+    grid.style.display = 'grid';
+    msg.style.display = 'none';
+  }
+}
+
+// ---------- Impacto económico de la optimización ----------
+function getCostParams(){
+  return {
+    precioComb: parseFloat(document.getElementById('rPrecioComb').value) || 0,
+    costoChoferHora: parseFloat(document.getElementById('rCostoChofer').value) || 0,
+    costoAcompHora: document.getElementById('rTieneAcomp').checked ? (parseFloat(document.getElementById('rCostoAcomp').value) || 0) : 0,
+    peajes: parseFloat(document.getElementById('rPeajes').value) || 0
+  };
+}
+
+// Costo total de un recorrido con los mismos parámetros que usa el cálculo económico
+// existente (combustible, laboral, mantenimiento, depreciación). Los peajes se toman tal
+// cual fueron cargados a mano: no se inventan ni se redistribuyen entre orden ingresado
+// y ruta optimizada, así que nunca generan un "ahorro de peajes" ficticio.
+function costoRuta(distanciaKm, duracionHoras, veh, params){
+  const costoCombustible = distanciaKm * params.precioComb * (veh.consumo / 100);
+  const costoLaboral = duracionHoras * (params.costoChoferHora + params.costoAcompHora);
+  const costoMantenimiento = distanciaKm * mantenimientoPorKm(veh);
+  const costoDepreciacion = distanciaKm * depreciacionPorKm(veh);
+  return costoCombustible + costoLaboral + costoMantenimiento + costoDepreciacion + params.peajes;
+}
+
+function calcularImpactoOptimizacion(){
+  const card = document.getElementById('impactCard');
+  const placeholder = document.getElementById('impactPlaceholder');
+  const body = document.getElementById('impactBody');
+
+  if (!rutaState.calculada){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const vehNombre = document.getElementById('rVehiculo').value;
+  const veh = vehiculos.find(v => v.nombre === vehNombre);
+  if (!veh){
+    placeholder.style.display = 'block';
+    body.style.display = 'none';
+    return;
+  }
+  placeholder.style.display = 'none';
+  body.style.display = 'grid';
+
+  const params = getCostParams();
+  const costoIngresado = costoRuta(rutaState.distanciaOrdenIngresado, rutaState.duracionOrdenIngresado, veh, params);
+  const costoOptimizado = costoRuta(rutaState.distanciaOptimizada, rutaState.duracionOptimizada, veh, params);
+  let ahorro = costoIngresado - costoOptimizado;
+  if (ahorro < 0) ahorro = 0;
+
+  let kmEvitados = rutaState.distanciaOrdenIngresado - rutaState.distanciaOptimizada;
+  if (kmEvitados < 0) kmEvitados = 0;
+  let horasEvitadas = rutaState.duracionOrdenIngresado - rutaState.duracionOptimizada;
+  if (horasEvitadas < 0) horasEvitadas = 0;
+
+  document.getElementById('impKm').textContent = kmEvitados.toFixed(1) + ' km';
+  document.getElementById('impHoras').textContent = horasEvitadas.toFixed(2) + ' h';
+  document.getElementById('impCostoIngresado').textContent = fmt(costoIngresado);
+  document.getElementById('impCostoOptimizado').textContent = fmt(costoOptimizado);
+  document.getElementById('impAhorro').textContent = fmt(ahorro);
+}
+
+function updateVehStatDisplay(){
+  const veh = vehiculos.find(v => v.nombre === document.getElementById('rVehiculo').value);
+  const row = document.getElementById('vehStatRow');
+  if (!veh){ row.style.display = 'none'; markStepDone('step2', false); return; }
+  row.style.display = 'grid';
+  document.getElementById('vehStatCat').textContent = veh.categoria || '—';
+  document.getElementById('vehStatConsumo').textContent = veh.consumo;
+  document.getElementById('vehStatDepre').textContent = fmt(depreciacionPorKm(veh)) + '/km';
+  document.getElementById('vehStatMant').textContent = fmt(mantenimientoPorKm(veh)) + '/km';
+  markStepDone('step2', true);
+}
+document.getElementById('rVehiculo').addEventListener('change', () => {
+  updateVehStatDisplay();
+  calcularImpactoOptimizacion();
+});
+
+document.getElementById('rMargenSlider').addEventListener('input', (e) => {
+  document.getElementById('rMargenObjetivo').value = e.target.value;
+  document.getElementById('margenReadout').textContent = e.target.value + '%';
+  calcularCostos();
+});
+
+document.getElementById('rTieneAcomp').addEventListener('change', (e) => {
+  document.getElementById('rAcompField').style.display = e.target.checked ? 'flex' : 'none';
+  calcularCostos();
+  calcularImpactoOptimizacion();
+});
+
+document.getElementById('rUsarHelper').addEventListener('change', (e) => {
+  document.getElementById('tollHelper').classList.toggle('show', e.target.checked);
+  aplicarHelperPeajes();
+});
+['rCantPeajes','rValorPeaje'].forEach(id => {
+  document.getElementById(id).addEventListener('input', aplicarHelperPeajes);
+});
+function aplicarHelperPeajes(){
+  if (!document.getElementById('rUsarHelper').checked) return;
+  const cant = parseFloat(document.getElementById('rCantPeajes').value) || 0;
+  const valor = parseFloat(document.getElementById('rValorPeaje').value) || 0;
+  document.getElementById('rPeajes').value = (cant * valor).toFixed(0);
+  calcularCostos();
+  calcularImpactoOptimizacion();
+}
+
+// ---------- Cálculo de costos ----------
+const RIBBON_COLORS = {
+  comb: '#FFD21F', lab: '#4FB8B0', mant: '#8890A0', depre: '#B79BD6', peajes: '#5CB37E'
+};
+
+function calcularCostos(){
+  const distancia = parseFloat(document.getElementById('distancia').value) || 0;
+  const duracionHoras = parseFloat(document.getElementById('duracion').value) || 0;
+  const params = getCostParams();
+  const facturado = parseFloat(document.getElementById('rFacturado').value) || 0;
+  const margenObjetivo = parseFloat(document.getElementById('rMargenObjetivo').value) || 0;
+
+  const vehNombre = document.getElementById('rVehiculo').value;
+  const veh = vehiculos.find(v => v.nombre === vehNombre);
+
+  const out = id => document.getElementById(id);
+  const ribbonBar = document.getElementById('ribbonBar');
+  const ribbonLegend = document.getElementById('ribbonLegend');
+
+  if (!veh){
+    ['outTotal','outCostoKm','outMargenPesos','outMargenPct'].forEach(id => out(id).textContent = '-');
+    out('rentabText').textContent = 'Cargá un vehículo primero';
+    out('rentabSub').textContent = '';
+    document.getElementById('rentabBox').style.background = 'var(--surface-raised)';
+    ['sdot1','sdot2','sdot3'].forEach(id => out(id).className = 'sdot');
+    document.getElementById('segCosto').style.width = '0%';
+    document.getElementById('segMargen').style.width = '0%';
+    ribbonBar.innerHTML = ''; ribbonLegend.innerHTML = '';
+    document.getElementById('btnGuardarPresupuesto').disabled = true;
+    return;
+  }
+  document.getElementById('btnGuardarPresupuesto').disabled = false;
+
+  const costoCombustible = distancia * params.precioComb * (veh.consumo/100);
+  const costoLaboral = duracionHoras * (params.costoChoferHora + params.costoAcompHora);
+  const costoMantenimiento = distancia * mantenimientoPorKm(veh);
+  const costoDepreciacion = distancia * depreciacionPorKm(veh);
+  const costoTotal = costoCombustible + costoLaboral + costoMantenimiento + costoDepreciacion + params.peajes;
+  const costoPorKm = distancia > 0 ? costoTotal / distancia : 0;
+
+  const margenPesos = facturado - costoTotal;
+  const margenPct = facturado > 0 ? (margenPesos/facturado*100) : 0;
+
+  out('outTotal').textContent = fmt(costoTotal);
+  out('outCostoKm').textContent = fmt(costoPorKm);
+  out('outMargenPesos').textContent = fmt(margenPesos);
+  out('outMargenPct').textContent = margenPct.toFixed(1) + '%';
+
+  // Ribbon de composición de costos
+  const comps = [
+    {key:'comb', label:'Combustible', val: costoCombustible},
+    {key:'lab', label:'Laboral', val: costoLaboral},
+    {key:'mant', label:'Mantenimiento', val: costoMantenimiento},
+    {key:'depre', label:'Depreciación', val: costoDepreciacion},
+    {key:'peajes', label:'Peajes', val: params.peajes},
+  ];
+  ribbonBar.innerHTML = '';
+  ribbonLegend.innerHTML = '';
+  comps.forEach(c => {
+    const pct = costoTotal > 0 ? (c.val / costoTotal * 100) : 0;
+    const seg = document.createElement('div');
+    seg.className = 'ribbon-seg';
+    seg.style.width = pct + '%';
+    seg.style.background = RIBBON_COLORS[c.key];
+    seg.title = c.label + ': ' + fmt(c.val);
+    ribbonBar.appendChild(seg);
+
+    const item = document.createElement('div');
+    item.className = 'ribbon-item';
+    item.innerHTML = `<span class="ribbon-dot" style="background:${RIBBON_COLORS[c.key]}"></span><span class="lbl">${c.label}</span><span class="val">${fmt(c.val)}</span>`;
+    ribbonLegend.appendChild(item);
+  });
+
+  // Composición del precio facturado: costo vs. margen
+  const costoPct = facturado > 0 ? Math.min(100, Math.max(0, costoTotal/facturado*100)) : 0;
+  const margenPctDelPrecio = Math.max(0, 100 - costoPct);
+  document.getElementById('segCosto').style.width = costoPct + '%';
+  document.getElementById('segMargen').style.width = margenPctDelPrecio + '%';
+  document.getElementById('segMargen').style.background = margenPct >= margenObjetivo ? 'var(--good)' : 'var(--bad)';
+
+  const rentable = margenPct >= margenObjetivo;
+  const bg = rentable ? 'var(--good-bg)' : 'var(--bad-bg)';
+  const fg = rentable ? 'var(--good)' : 'var(--bad)';
+  document.getElementById('rentabBox').style.background = bg;
+
+  // Semáforo: 3 puntos, se enciende uno según qué tan cerca está del objetivo
+  const sdots = ['sdot1','sdot2','sdot3'].map(id => out(id));
+  sdots.forEach(d => d.className = 'sdot');
+  if (margenPct < 0){
+    sdots[0].className = 'sdot on-bad';
+  } else if (margenPct < margenObjetivo){
+    sdots[0].className = 'sdot on-bad';
+    sdots[1].className = 'sdot on-warn';
+  } else {
+    sdots[0].className = 'sdot on-bad';
+    sdots[1].className = 'sdot on-warn';
+    sdots[2].className = 'sdot on-good';
+  }
+
+  out('outMargenPct').style.color = fg;
+  out('outMargenPesos').style.color = fg;
+  out('rentabText').style.color = fg;
+  out('rentabText').textContent = rentable ? 'Viaje rentable' : 'Viaje no rentable';
+  out('rentabSub').textContent = 'Margen logrado ' + margenPct.toFixed(1) + '% vs. objetivo ' + margenObjetivo + '%';
+  markStepDone('step5', true);
+}
+
+// Recalcula costos e impacto económico ante cambios en vehículo/costos/margen.
+// Los campos de punto de inicio y destinos quedan afuera (llevan la clase "no-autocalc"):
+// esos sólo se aplican cuando el usuario vuelve a tocar "Optimizar ruta".
+document.querySelectorAll('#tab-ruta input:not(.no-autocalc), #tab-ruta select').forEach(el => {
+  el.addEventListener('input', () => { calcularCostos(); calcularImpactoOptimizacion(); });
+});
+
+// ---------- Presupuestos ----------
+function renderPresupuestos(){
+  const tbody = document.getElementById('preTableBody');
+  const table = document.getElementById('preTable');
+  const empty = document.getElementById('preEmpty');
+  tbody.innerHTML = '';
+  table.style.display = presupuestos.length ? 'table' : 'none';
+  empty.style.display = presupuestos.length ? 'none' : 'block';
+  document.getElementById('preSummary').textContent = presupuestos.length ? (presupuestos.length + ' guardado' + (presupuestos.length===1?'':'s')) : '';
+
+  presupuestos.slice().reverse().forEach((p) => {
+    const realIdx = presupuestos.indexOf(p);
+    const tr = document.createElement('tr');
+    const paradasTxt = p.paradas ? `<span class="quote-paradas">(${p.paradas} parada${p.paradas===1?'':'s'})</span>` : '';
+    tr.innerHTML = `
+      <td class="mono">${escapeHtml(p.fecha)}</td>
+      <td><div class="quote-route"><span>${escapeHtml(p.origen)}</span><span class="arrow">→</span><span>${escapeHtml(p.destino)}</span>${paradasTxt}</div></td>
+      <td>${escapeHtml(p.vehiculo)}</td>
+      <td class="mono">${p.distancia} km</td>
+      <td class="mono">${fmt(p.costoTotal)}</td>
+      <td class="mono">${p.margenPct.toFixed(1)}%</td>
+      <td><span class="pill ${p.rentable ? 'good' : 'bad'}">${p.rentable ? 'Rentable' : 'No rentable'}</span></td>
+      <td><button class="quote-del" data-idx="${realIdx}" title="Eliminar">&times;</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.quote-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      presupuestos.splice(btn.dataset.idx, 1);
+      savePre();
+      renderPresupuestos();
+      updateHeaderMeta();
+    });
+  });
+  updateHeaderMeta();
+}
+
+document.getElementById('btnGuardarPresupuesto').addEventListener('click', () => {
+  const distancia = parseFloat(document.getElementById('distancia').value) || 0;
+  const vehNombre = document.getElementById('rVehiculo').value;
+  const veh = vehiculos.find(v => v.nombre === vehNombre);
+  if (!veh || distancia <= 0){
+    alert('Optimizá una ruta con un vehículo cargado antes de guardar el presupuesto.');
+    return;
+  }
+  const costoTotal = parseFloat(document.getElementById('outTotal').textContent.replace(/[^\d.-]/g,'')) || 0;
+  const margenPct = parseFloat(document.getElementById('outMargenPct').textContent) || 0;
+  const margenObjetivo = parseFloat(document.getElementById('rMargenObjetivo').value) || 0;
+  const origen = rutaState.calculada ? rutaState.puntoInicio.texto : (document.getElementById('puntoInicio').value.trim() || 'Sin especificar');
+  const destino = rutaState.calculada && rutaState.paradas.length
+    ? rutaState.paradas[rutaState.paradas.length - 1].texto
+    : 'Sin especificar';
+  presupuestos.push({
+    fecha: new Date().toLocaleDateString('es-AR'),
+    origen,
+    destino,
+    paradas: rutaState.calculada ? rutaState.paradas.length : 0,
+    vehiculo: veh.nombre,
+    distancia: distancia.toFixed(1),
+    costoTotal,
+    margenPct,
+    rentable: margenPct >= margenObjetivo,
+  });
+  savePre();
+  renderPresupuestos();
+  alert('Presupuesto guardado. Lo vas a ver en la pestaña "Presupuestos".');
+});
+
+document.getElementById('btnClearPre').addEventListener('click', () => {
+  if (!presupuestos.length) return;
+  if (!confirm('¿Vaciar todo el historial de presupuestos guardados?')) return;
+  presupuestos = [];
+  savePre();
+  renderPresupuestos();
+});
+
+document.getElementById('btnExportPre').addEventListener('click', () => {
+  if (!presupuestos.length){ alert('No hay presupuestos para exportar.'); return; }
+  const header = 'fecha,origen,destino,paradas,vehiculo,distancia_km,costo_total,margen_pct,rentable\n';
+  const rows = presupuestos.map(p => [p.fecha, p.origen, p.destino, (p.paradas||0), p.vehiculo, p.distancia, p.costoTotal, p.margenPct.toFixed(1), p.rentable ? 'si' : 'no'].join(',')).join('\n');
+  const blob = new Blob([header + rows], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'presupuestos_traza.csv';
+  a.click();
+});
+
+renderDestinos();
+renderVehiculos();
+renderPresupuestos();
+calcularCostos();
+calcularImpactoOptimizacion();
+</script>
+
+<!-- ======================================================================
+     Búsqueda por patente (clasific.ar), vía el backend local en
+     http://localhost:3000. Este bloque es 100% aparte del <script> de
+     arriba: no toca ninguna variable, función ni cálculo existente.
+     Requiere tener corriendo "npm start" en clasificar-backend.
+====================================================================== -->
+<script>
+(function(){
+  const BACKEND_URL = 'http://localhost:3000';
+  const REGEX_PATENTE = /^([A-Za-z]{3}\d{3}|[A-Za-z]{2}\d{3}[A-Za-z]{2})$/;
+
+  const inputPatente = document.getElementById('pPatente');
+  const status = document.getElementById('patenteStatus');
+  const resultBox = document.getElementById('patenteResult');
+  const btnBasico = document.getElementById('btnBuscarPatente');
+
+  function getPatente(){
+    return (inputPatente.value || '').trim().toUpperCase();
+  }
+
+  function setStatus(msg, tipo){
+    status.textContent = msg;
+    status.style.color = tipo === 'error' ? 'var(--bad)' : tipo === 'ok' ? 'var(--good)' : 'var(--text-dim)';
+  }
+
+  function mostrarError(err){
+    resultBox.style.display = 'block';
+    const msg = err?.body?.error?.message || err?.message || 'No se pudo completar la consulta.';
+    resultBox.innerHTML = `<p class="pr-title" style="color:var(--bad)">No se pudo obtener el dato</p><div class="pr-row"><span>Detalle</span><span>${msg}</span></div>`;
+  }
+
+  async function buscarBasico(){
+    const patente = getPatente();
+    if (!REGEX_PATENTE.test(patente)){
+      setStatus('Formato de patente inválido (ABC123 o AB123CD).', 'error');
+      return;
+    }
+    setStatus('Buscando...', '');
+    resultBox.style.display = 'none';
+    try{
+      const res = await fetch(`${BACKEND_URL}/api/patente/${encodeURIComponent(patente)}`);
+      const data = await res.json();
+      if (!res.ok){ setStatus('Error de clasific.ar.', 'error'); mostrarError(data); return; }
+
+      setStatus(data.found ? 'Vehículo encontrado.' : 'No se encontró esa patente.', data.found ? 'ok' : 'error');
+      if (data.found && data.data){
+        const v = data.data;
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = `
+          <p class="pr-title">${v.make || ''} ${v.model || ''}</p>
+          <div class="pr-row"><span>Año</span><span>${v.year ?? '-'}</span></div>
+          <div class="pr-row"><span>Patente</span><span>${v.plate ?? patente}</span></div>
+          <div class="pr-row"><span>Ubicación</span><span>${v.currentLocation ? (v.currentLocation.city + ', ' + v.currentLocation.province) : '-'}</span></div>
+          ${data.data.sandbox ? '<div class="pr-row"><span>Modo</span><span>sandbox (dato de prueba)</span></div>' : ''}
+        `;
+        // Autocompleta el nombre/código del vehículo si está vacío
+        const nombreInput = document.getElementById('vNombre');
+        if (nombreInput && !nombreInput.value.trim()){
+          nombreInput.value = [v.make, v.model].filter(Boolean).join(' ') + (patente ? ' — ' + patente : '');
+        }
+      }
+    }catch(err){
+      setStatus('No se pudo conectar al backend local (¿corriste "npm start" en clasificar-backend?).', 'error');
+      mostrarError(err);
+    }
+  }
+
+  btnBasico.addEventListener('click', buscarBasico);
+})();
+</script>
+</body>
+</html>
